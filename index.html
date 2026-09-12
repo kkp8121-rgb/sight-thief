@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#171923">
+  <title>SIGHT THIEF · 시선을 훔치는 자</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" class="app-shell" data-screen="title">
+    <section id="world" class="world-layer"><canvas id="world-canvas" aria-label="박물관 잠입 장면"></canvas><div id="scene-fallback" class="scene-fallback hidden" role="status"></div></section>
+
+    <section id="title-screen" data-screen="title" class="screen title-screen">
+      <div class="title-art" aria-hidden="true"></div><div class="title-copy"><p class="eyebrow">MUSEUM HEIST / OBSERVATION PROTOCOL</p><h1>SIGHT<br><em>THIEF</em></h1><p class="tagline">시선이 닿은 곳에서만, 잃어버린 기억이 모습을 드러냅니다.</p><div class="action-row"><button class="button primary" data-action="start">잠입 시작</button><button class="button ghost" data-action="begin" id="continue-button">기록 이어하기</button><button class="button quiet" data-action="guide">작전 안내</button></div><p id="title-note" class="muted-copy">웅크리고 Q를 누르면 감시자의 눈을 빌립니다.</p></div>
+    </section>
+
+    <section id="select-screen" data-screen="select" class="screen panel-screen hidden"><div class="panel-card"><header><div><p class="eyebrow">WING SELECT</p><h2>어느 전시관으로 향할까요?</h2></div><button class="close-button" data-action="back">닫기 ×</button></header><div id="level-list" class="level-list"></div><div class="settings-row"><label for="mode-select">난이도 <select id="mode-select"><option value="standard">표준 잠입</option><option value="gentle">느긋한 잠입</option></select></label><button class="button quiet" data-action="guide">작전 안내</button><button class="button primary" data-action="begin">이 전시관으로 잠입</button></div></div></section>
+
+    <section id="play-screen" data-screen="play" class="screen gameplay-screen hidden"><header class="hud"><div><p class="eyebrow">SIGHT THIEF</p><h2 id="wing-title">초대받지 않은 밤</h2><span id="wing-mode" class="mode-label">표준 잠입</span></div><div class="hud-right"><div class="hud-stat"><span>의심</span><b id="suspicion-value">0%</b><i class="meter"><em id="suspicion-meter"></em></i></div><div class="hud-stat"><span>발견 / 회수</span><b><span id="found-value">0</span> / <span id="collected-value">0</span></b></div><button class="icon-button" data-action="pause" aria-label="일시정지">Ⅱ</button></div></header><div class="status-row"><span id="body-state">몸: 이동 가능</span><span id="watcher-label">시선: 내 눈</span><span id="objective-text">발견한 유물을 회수하고 출구로 향하세요.</span></div><p id="tutorial-copy" class="tutorial-copy">웅크리고 Shift를 누른 채 Q를 홀드하세요. 감시자의 눈으로만 유물이 보입니다.</p><p id="interact-prompt" class="interact-prompt"></p><div id="touch-controls" class="touch-controls" aria-label="터치 조작"><button data-touch="forward" aria-label="앞으로">▲</button><button data-touch="back" aria-label="뒤로">▼</button><button data-touch="left" aria-label="왼쪽">◀</button><button data-touch="right" aria-label="오른쪽">▶</button><button data-touch="crouch" aria-label="웅크리기">웅크림</button><button data-touch="watch" aria-label="감시자 보기">Q 보기</button><button data-touch="interact" aria-label="상호작용">E 조사</button><button data-touch="cycle" aria-label="다음 감시자">Tab 다음</button></div></section>
+
+    <section id="pause-screen" data-screen="pause" class="screen modal-screen hidden"><div class="modal-card"><p class="eyebrow">PAUSED</p><h2>작전을 잠시 멈췄습니다.</h2><p>메뉴를 여는 동안 박물관의 시간은 흐르지 않습니다.</p><div class="action-row"><button class="button primary" data-action="resume">계속 잠입</button><button class="button ghost" data-action="guide">작전 안내</button><button class="button ghost" data-action="back">전시관 선택</button></div></div></section>
+    <section id="guide-screen" data-screen="guide" class="screen modal-screen hidden"><div class="modal-card guide-card"><button class="close-button" data-action="back">닫기 ×</button><p class="eyebrow">FIELD NOTE</p><h2>시선을 도구로 삼기</h2><div class="guide-grid"><p><b>몸을 낮추세요.</b> Shift를 홀드하면 발소리와 발견 위험이 줄어듭니다. 벽 뒤의 그림자는 안전한 피난처입니다.</p><p><b>Q를 홀드하세요.</b> 감시자의 눈을 빌리는 동안 내 몸은 그 자리에 멈춥니다. 감시자는 계속 순찰합니다.</p><p><b>유물을 확인하세요.</b> 감시자의 시선에 0.45초 비친 유물만 기억됩니다. 발견한 뒤 직접 다가가 E를 누르세요.</p><p><b>목격자를 바꾸세요.</b> 여러 감시자가 있는 전시관에서 Q를 누른 채 Tab으로 시선을 바꿀 수 있습니다.</p><p><b>기록은 완료 후에만 남습니다.</b> 완료한 전시관의 기록만 저장됩니다. 진행 중인 잠입은 저장되지 않습니다.</p></div><p class="key-hints">WASD 이동 · ←/→ 회전 · ↑/↓ 앞뒤 이동 · 캔버스 클릭 후 마우스 시선 · Shift 웅크림 · Q 관찰 · Tab 감시자 전환 · E 조사 · Esc 일시정지 · R/Enter 재시도 · M 음소거</p><div class="settings-row"><label for="volume-range">소리 <input id="volume-range" type="range" min="0" max="1" step=".01" value=".24"></label><button class="button ghost" data-action="mute" id="mute-button">음소거</button></div></div></section>
+    <section id="clear-screen" data-screen="clear" class="screen modal-screen hidden"><div class="modal-card"><p class="eyebrow">WING CLEAR</p><h2 id="clear-title">전시관을 통과했습니다.</h2><p id="clear-copy"></p><div id="clear-stats" class="result-stats"></div><div class="action-row"><button class="button primary" data-action="next">다음 전시관 · Enter</button><button class="button ghost" data-action="back">전시관 선택</button></div></div></section>
+    <section id="defeat-screen" data-screen="defeat" class="screen modal-screen hidden"><div class="modal-card"><p class="eyebrow">DETECTED</p><h2>시선이 겹쳤습니다.</h2><p id="defeat-copy">의심이 끝까지 차올랐습니다. 이 전시관부터 다시 시작하세요.</p><div class="action-row"><button class="button primary" data-action="retry">전시관 재시도 · R</button><button class="button ghost" data-action="back">전시관 선택</button></div></div></section>
+    <section id="ending-screen" data-screen="ending" class="screen modal-screen hidden"><div class="modal-card ending-card"><p class="eyebrow">THE LAST ROOM</p><h2>기억은 누구의 것도 아닙니다.</h2><p id="ending-copy">여섯 조각의 시선이 서로를 비추며 원래의 주인을 찾아갑니다.</p><div id="ending-stats" class="result-stats"></div><button class="button primary wide" data-action="restart">다시 잠입하기 · Enter</button></div></section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>

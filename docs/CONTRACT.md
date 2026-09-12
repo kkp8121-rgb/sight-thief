@@ -14,7 +14,7 @@ CELL=3 metres. ASCII '#' solid wall, '.' floor, 's' shadow refuge, 'S' spawn and
 
 Maps, patrols and narrative are authored in src/levels.js. Patrol waypoints below are [column,row]; use collision-aware grid paths for patrol/investigation, not direct motion through walls. All relics and exits must be reachable on foot and observable from at least one actual guard patrol segment. Root may adjust geometry only after evidence.
 
-Wing1 id='foyer', title='초대받지 않은 밤', one relic '첫 번째 웃음'. Spawn yaw0. One guard '문지기', route [[9,7],[3,7],[3,3],[9,3]], starting toward [3,7] so the opening scan becomes useful within seconds.
+All spawns face south (yaw=Math.PI) into the room, not the north boundary wall. Wing1 id='foyer', title='초대받지 않은 밤', one relic '첫 번째 웃음'. One guard '문지기', route [[9,7],[3,7],[3,3],[9,3]], starting toward [3,7] so the opening scan becomes useful within seconds.
 
 ```text
 #############
@@ -48,7 +48,7 @@ Wing2 id='archive', title='닫힌 편지의 수장고', relics '보내지 못한
 #################
 ```
 
-Wing3 id='vault', title='시선의 금고', relics '집으로 가는 노래', '낡은 약속', '아무도 빼앗지 못할 내일'. Guards '첫째 감시자' route [[2,3],[16,3],[16,7],[2,7]], '둘째 감시자' route [[1,7],[17,7],[17,10],[1,10]], '금고지기' route [[16,12],[2,12],[2,10],[16,10]].
+Wing3 id='vault', title='시선의 금고', relics '집으로 가는 노래', '낡은 약속', '아무도 빼앗지 못할 내일'. Guards '첫째 감시자' route [[2,3],[16,3],[16,7],[2,7]], '둘째 감시자' route [[1,7],[17,7],[17,10],[1,10]], '금고지기' route [[17,12],[2,12],[2,10],[17,10]]. The lower guard starts two columns east of the rightmost relic, so the 35-degree view cone has a comfortable discovery window.
 
 ```text
 ###################

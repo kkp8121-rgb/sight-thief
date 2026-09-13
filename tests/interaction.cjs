@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
-const { setup, save } = require('./browser-tools.cjs');
+const path = require('node:path');
+const { setup, save, artifacts } = require('./browser-tools.cjs');
 
 async function openGame(options = {}, init = null) {
   const env = await setup(options);
@@ -43,17 +44,14 @@ async function seedFoyer(page) {
   await page.evaluate(() => localStorage.setItem('sight-thief-records-v1', JSON.stringify({ standard: { foyer: { time: 10, peakSuspicion: .1, grade: 'S' } }, gentle: {} })));
 }
 
-async function testMouseAndPointerLock() {
+async function testMouseDrag() {
   const env = await openGame();
   try {
     await start(env.page);
     const canvas = env.page.locator('#world-canvas'), box = await canvas.boundingBox();
-    const supported = await env.page.evaluate(() => typeof document.getElementById('world-canvas').requestPointerLock === 'function');
-    if (!supported || !box) return { supported: false, locked: false };
-    await env.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await env.page.waitForTimeout(100);
-    const locked = await env.page.evaluate(() => document.pointerLockElement === document.getElementById('world-canvas'));
-    if (!locked) return { supported: true, locked: false };
+    assert.ok(box);
+    await env.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await env.page.mouse.down();
     const initial = await state(env.page);
     await env.page.mouse.move(box.x + box.width / 2 + 44, box.y + box.height / 2 + 24);
     await env.page.waitForTimeout(80);
@@ -62,7 +60,7 @@ async function testMouseAndPointerLock() {
     assert(yawDelta > 0, 'mouse movement right must increase yaw');
     assert(moved.player.pitch < initial.player.pitch, 'mouse movement down must decrease pitch');
 
-    await env.page.keyboard.down('q');
+    await env.page.keyboard.press('q');
     await env.page.waitForTimeout(100);
     const watchStart = await state(env.page);
     await env.page.mouse.move(box.x + box.width / 2 - 40, box.y + box.height / 2 - 28);
@@ -71,15 +69,16 @@ async function testMouseAndPointerLock() {
     assert.equal(watchMoved.watching, true, 'Q must remain active during mouse look');
     assert.equal(watchMoved.player.yaw, watchStart.player.yaw, 'mouse look must not rotate the body while watching');
     assert.equal(watchMoved.player.pitch, watchStart.player.pitch, 'mouse look must not tilt the body while watching');
-    await env.page.keyboard.up('q');
+    await env.page.keyboard.press('q');
     await env.page.waitForTimeout(80);
     const released = await state(env.page);
-    assert.equal(released.player.yaw, watchStart.player.yaw, 'releasing Q must not apply queued mouse movement');
+    assert.equal(released.player.yaw, watchStart.player.yaw, 'returning must not apply queued mouse movement');
+    await env.page.mouse.up();
     await env.page.keyboard.press('Escape');
     await env.page.waitForTimeout(60);
-    assert.equal(await env.page.evaluate(() => window.__sight.screen), 'pause', 'Escape must pause from pointer lock');
-    assert.equal(await env.page.evaluate(() => document.pointerLockElement), null, 'Escape must release pointer lock');
-    return { supported: true, locked: true };
+    assert.equal(await env.page.evaluate(() => window.__sight.screen), 'pause', 'Escape must pause');
+    assert.equal(await env.page.evaluate(() => document.pointerLockElement), null, 'native pointer lock is never used in automation');
+    return { drag: true, nativePointerLock: false };
   } finally { await env.close(); }
 }
 
@@ -121,21 +120,28 @@ async function testKeyboardAndPause() {
     assert(Math.hypot(strafed.player.x - beforeStrafe.x, strafed.player.z - beforeStrafe.z) > .01, 'A must strafe');
 
     const beforeWatch = strafed.player;
-    await env.page.keyboard.down('q');
+    await env.page.keyboard.press('q');
     await env.page.waitForTimeout(180);
     const watching = await state(env.page);
     assert.equal(watching.watching, true, 'Q must enter sight possession');
-    assert(Math.hypot(watching.player.x - beforeWatch.x, watching.player.z - beforeWatch.z) < .001, 'watching must freeze the body');
-    await env.page.keyboard.up('q');
+    await env.page.keyboard.down('q');
+    await env.page.keyboard.down('q');
     await env.page.waitForTimeout(80);
-    assert.equal((await state(env.page)).watching, false, 'releasing Q must return to the body');
+    assert.equal((await state(env.page)).watching, false, 'one new press returns; key repeat must not toggle again');
+    await env.page.keyboard.up('q');
+    await env.page.keyboard.press('q');
+    await env.page.waitForTimeout(60);
+    assert(Math.hypot(watching.player.x - beforeWatch.x, watching.player.z - beforeWatch.z) < .001, 'watching must freeze the body');
+    await env.page.keyboard.press('q');
+    await env.page.waitForTimeout(80);
+    assert.equal((await state(env.page)).watching, false, 'second Q tap must return to the body');
 
     await env.page.keyboard.down('Shift');
     await env.page.waitForTimeout(60);
-    assert.equal((await state(env.page)).player.crouching, true, 'Shift must crouch');
+    assert.equal((await state(env.page)).player.crouching, false, 'Shift must hurry');
     await env.page.keyboard.up('Shift');
     await env.page.waitForTimeout(60);
-    assert.equal((await state(env.page)).player.crouching, false, 'releasing Shift must stand');
+    assert.equal((await state(env.page)).player.crouching, true, 'releasing Shift must return to quiet movement');
 
     await env.page.waitForTimeout(100);
     await env.page.locator('[data-action="pause"]').click();
@@ -159,7 +165,7 @@ async function testArchiveCycle() {
     await env.page.locator('[data-level-id="archive"]').click();
     await env.page.locator('#select-screen [data-action="begin"]').click();
     await env.page.waitForFunction(() => window.__sight?.screen === 'play');
-    await env.page.keyboard.down('q');
+    await env.page.keyboard.press('q');
     await env.page.waitForTimeout(180);
     const first = await state(env.page);
     assert.equal(first.watching, true, 'archive Q must possess a guard');
@@ -167,13 +173,15 @@ async function testArchiveCycle() {
     await env.page.waitForTimeout(60);
     const second = await state(env.page);
     assert.notEqual(second.watchGuardId, first.watchGuardId, 'Tab must cycle to another guard');
-    await env.page.keyboard.up('q');
+    await env.page.keyboard.press('q');
+    await env.page.waitForFunction(() => !window.__sight.run.watching);
     const watch = env.page.locator('[data-touch="watch"]'), cycle = env.page.locator('[data-touch="cycle"]');
-    const watchPoint = await controlPoint(env.page, watch), cyclePoint = await controlPoint(env.page, cycle);
+    const watchPoint = await controlPoint(env.page, watch);
     const client = await env.page.context().newCDPSession(env.page);
     await dispatchTouch(client, 'touchStart', [{ ...watchPoint, id: 30 }]);
     await env.page.waitForTimeout(100);
     const touchFirst = await state(env.page);
+    const cyclePoint = await controlPoint(env.page, cycle);
     await dispatchTouch(client, 'touchStart', [{ ...watchPoint, id: 30 }, { ...cyclePoint, id: 31 }]);
     await env.page.waitForTimeout(60);
     const touchSecond = await state(env.page);
@@ -191,25 +199,25 @@ async function testMobileTouch() {
       const layout = await env.page.evaluate(() => ({
         width: innerWidth,
         overflow: document.documentElement.scrollWidth > innerWidth + 1 || document.body.scrollWidth > innerWidth + 1,
-        controls: [...document.querySelectorAll('[data-touch]')].map((node) => { const rect = node.getBoundingClientRect(), hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2); return { display: getComputedStyle(node).display, rect: rect.toJSON(), hit: hit?.closest?.('[data-touch]')?.dataset.touch === node.dataset.touch }; })
+        controls: [...document.querySelectorAll('[data-touch]')].filter(node => node.getBoundingClientRect().width > 0).map((node) => { const rect = node.getBoundingClientRect(), hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2); return { display: getComputedStyle(node).display, rect: rect.toJSON(), hit: hit?.closest?.('[data-touch]')?.dataset.touch === node.dataset.touch }; })
       }));
       assert.equal(layout.overflow, false, `mobile ${viewport.width}x${viewport.height} must not overflow horizontally`);
-      assert.equal(layout.controls.length, 8, 'all eight touch controls must be present');
+      assert.equal(layout.controls.length, 7, 'a single-guard wing needs no guard-switch button');
       for (const control of layout.controls) {
         assert.notEqual(control.display, 'none', 'touch controls must be visible on coarse pointers');
         assert(control.rect.width >= 44 && control.rect.height >= 44, 'touch controls must be at least 44px');
         assert.equal(control.hit, true, 'touch control center must be unobscured');
       }
-      const crouch = env.page.locator('[data-touch="crouch"]');
+      const crouch = env.page.locator('[data-touch="hurry"]');
       const crouchBox = await controlPoint(env.page, crouch);
       await env.page.touchscreen.tap(crouchBox.x, crouchBox.y);
       await env.page.waitForTimeout(80);
-      assert.equal((await state(env.page)).player.crouching, true, 'touch crouch first tap must engage');
-      assert.equal(await crouch.evaluate((node) => node.classList.contains('held')), true, 'touch crouch must stay visibly engaged');
+      assert.equal((await state(env.page)).player.crouching, false, 'touch hurry first tap must engage');
+      assert.equal(await crouch.evaluate((node) => node.classList.contains('held')), true, 'touch hurry must stay visibly engaged');
       await env.page.touchscreen.tap(crouchBox.x, crouchBox.y);
       await env.page.waitForTimeout(80);
-      assert.equal((await state(env.page)).player.crouching, false, 'touch crouch second tap must release');
-      assert.equal(await crouch.evaluate((node) => node.classList.contains('held')), false, 'touch crouch release must clear styling');
+      assert.equal((await state(env.page)).player.crouching, true, 'touch hurry second tap must release');
+      assert.equal(await crouch.evaluate((node) => node.classList.contains('held')), false, 'touch hurry release must clear styling');
 
       const watch = env.page.locator('[data-touch="watch"]');
       const watchPoint = await controlPoint(env.page, watch), client = await env.page.context().newCDPSession(env.page);
@@ -218,13 +226,24 @@ async function testMobileTouch() {
       assert.equal((await state(env.page)).watching, true, 'touch watch must engage while held');
       await dispatchTouch(client, 'touchEnd', []);
       await env.page.waitForTimeout(80);
-      assert.equal((await state(env.page)).watching, false, 'touch watch pointerup must release');
+      assert.equal((await state(env.page)).watching, true, 'touch watch persists after releasing the button');
+      await env.page.touchscreen.tap(watchPoint.x, watchPoint.y);
+      await env.page.waitForTimeout(80);
+      assert.equal((await state(env.page)).watching, false, 'second touch returns to the body');
       const forward = env.page.locator('[data-touch="forward"]'), forwardPoint = await controlPoint(env.page, forward), beforeMove = await state(env.page);
       await dispatchTouch(client, 'touchStart', [{ ...forwardPoint, id: 21 }]);
       await env.page.waitForTimeout(180);
       await dispatchTouch(client, 'touchEnd', []);
       const afterMove = await state(env.page);
       assert(Math.hypot(afterMove.player.x - beforeMove.player.x, afterMove.player.z - beforeMove.player.z) > .01, 'touch forward must move the player');
+      const bodyPoint = { x: viewport.width * .65, y: viewport.height * .50, id: 22 };
+      await dispatchTouch(client, 'touchStart', [bodyPoint]);
+      await dispatchTouch(client, 'touchMove', [{ ...bodyPoint, x: bodyPoint.x + 38, y: bodyPoint.y + 16 }]);
+      await dispatchTouch(client, 'touchEnd', []);
+      await env.page.waitForTimeout(90);
+      const looked = await state(env.page);
+      assert.ok(Math.atan2(Math.sin(looked.player.yaw - afterMove.player.yaw), Math.cos(looked.player.yaw - afterMove.player.yaw)) > .04, 'touch canvas drag turns the camera');
+      await env.page.screenshot({ path: path.join(artifacts, `v2-mobile-${viewport.width}.png`) });
       results.push({ viewport, overflow: layout.overflow, controls: layout.controls.length });
     } finally { await env.close(); }
   }
@@ -275,6 +294,7 @@ async function testDefeatAndRetry() {
   let defeated = false;
   try {
     await start(env.page);
+    await env.page.keyboard.down('Shift');
     await env.page.keyboard.down('a');
     await env.page.waitForTimeout(1500);
     await env.page.keyboard.up('a');
@@ -292,7 +312,7 @@ async function testDefeatAndRetry() {
 }
 
 (async () => {
-  const report = { mouse: await testMouseAndPointerLock(), pointerLockDenied: await testPointerLockDenied(), keyboardPause: true, archiveCycle: true, mobile: await testMobileTouch(), corruptStorage: true, fallbacks: true, defeatRetry: await testDefeatAndRetry() };
+  const report = { mouse: await testMouseDrag(), pointerLockDenied: await testPointerLockDenied(), keyboardPause: true, archiveCycle: true, mobile: await testMobileTouch(), corruptStorage: true, fallbacks: true, defeatRetry: await testDefeatAndRetry() };
   await testKeyboardAndPause();
   await testArchiveCycle();
   await testCorruptStorage();

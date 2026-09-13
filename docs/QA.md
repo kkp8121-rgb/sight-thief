@@ -1,4 +1,22 @@
-# Verification — 2026-09-13 KST
+# Controls and guidance revision — 2026-09-13
+
+Q now toggles borrowed sight, normal movement is quiet crouched walking, and Shift hurries. Discovered goals follow visible corridor waypoints, with eight direction labels. The HUD presents one current action and collected/total memories. Mouse and touch drag use pointer capture; pause, blur and screen changes clear both held and toggled input.
+
+The previous bundle failed the new real mouse-drag regression (`artifacts/v1-drag-reproduction.log`: rightward drag did not increase yaw). The revised bundle passes. Every browser harness denies native Pointer Lock before loading the game. Native pointer lock was deliberately not exercised because headless automation can affect the user's desktop cursor.
+
+- Pure simulation/models: 12/12 pass; mechanics, patrols and maps are unchanged.
+- Final file/subpath browser checks: discovery, body/guard camera correspondence, corridor guidance, keyboard turning, measurable audio, mute and pause; no runtime errors, missing assets or external requests.
+- Final interaction checks: actual mouse drag and touch drag, Q tap/repeat, Shift hurry, multiple guards, portrait 390×844 and landscape 844×390, seven visible first-wing touch controls of at least 44px, pause/retry, corrupt storage, and denied pointer-lock/WebGL/audio fallbacks.
+- Actual hardware browser campaign: all three wings, six memories and ending; reload restores completion records and unlocks. Wing times were 66.500 / 102.433 / 126.833 seconds. Natural scan times were 5.783 / 12.267 / 18.283 seconds. Peak suspicion was 0 / 0 / 5.667%. No live game-state assignment; the test plans on detached snapshots and controls the browser with real keys.
+- Campaign audio: 1,084 sources, destination peak 0.010177. Hardware frame interval mean 16.836ms, p95 16.7ms over 17,668 frames. Optimized automated routes do not establish human difficulty or enjoyment.
+- The campaign used bundle SHA-256 `5108c71a6eca551a58491505a55c0585163205646e546d73a506528a28d4ccc9`. Afterwards only eight-direction wording and inert Tab handling were refined. Final browser/interaction/package checks use `42dad54feab58c2434b9395aee287a2c82796ed807d56d5f8587a2b12f59b05f`.
+- Final dedicated RTX 3060 Ti/D3D11 check: 1,296,000 pixels, 33 draw calls, mean 23.443ms, p95 50ms; run concurrently with other test work, not an isolated benchmark.
+- Portable ZIP: all eight entries match final local files and use forward-slash relative paths. Fresh screenshots include `v1-spawn.png`, `v1-watch.png`, `subpath-route.png`, and `v2-mobile-390.png` / `v2-mobile-844.png` in ignored artifacts.
+
+Published asset hashes and the actual Pages build are verified separately after push and saved to `artifacts/improvement-publication.json`.
+
+---
+# Original release verification — historical
 
 All browser work used headless Chromium. No visible browser was opened. The original PROMPTRON project and the fifteen original cartridges were not modified.
 

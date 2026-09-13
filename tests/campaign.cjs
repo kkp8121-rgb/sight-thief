@@ -16,11 +16,11 @@ const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs')
     for (const key of wanted) if (!held.has(key)) { await page.keyboard.down(key); held.add(key); }
   }
   async function follow(target) {
-    await keys(['Shift']); await page.keyboard.press('Escape'); await keys([]);
+    await keys([]); await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => window.__sight.screen), 'pause');
     const frozen = await state(), plan = planRoute(frozen, target);
     console.log(JSON.stringify({ level: frozen.levelId, target, routeSeconds: plan.duration, explored: plan.explored }));
-    await page.keyboard.press('Escape'); await keys(['Shift']);
+    await page.keyboard.press('Escape');
     for (const waypoint of plan.route.slice(1)) {
       const deadline = Date.now() + 12000;
       while (true) {
@@ -31,13 +31,13 @@ const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs')
         if (Date.now() > deadline) throw new Error(`Waypoint stuck: ${JSON.stringify({ waypoint, player: run.player, time: run.time })}`);
         // All campaign runs retain their south-facing initial yaw. A/D strafe,
         // and W/S move on the other world axis using genuine browser keys.
-        const wanted = ['Shift'];
+        const wanted = [];
         if (moving) { if (Math.abs(dx) > Math.abs(dz)) wanted.push(dx > 0 ? 'a' : 'd'); else wanted.push(dz > 0 ? 'w' : 's'); }
         await keys(wanted); await page.waitForTimeout(22);
       }
-      await keys(['Shift']);
+      await keys([]);
     }
-    await keys(['Shift']); await page.keyboard.press('e'); await page.waitForTimeout(60);
+    await keys([]); await page.keyboard.press('e'); await page.waitForTimeout(60);
   }
   try {
     await page.goto(t.url); await page.waitForFunction(() => window.__sight?.ready);
@@ -45,7 +45,7 @@ const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs')
     await page.waitForFunction(() => window.__sight.screen === 'play');
     for (let index = 0; index < LEVELS.length; index++) {
       const level = LEVELS[index];
-      await keys(['Shift', 'q']); await page.waitForFunction(() => window.__sight.run.watching);
+      await page.keyboard.press('q'); await page.waitForFunction(() => window.__sight.run.watching);
       for (let cycle = 0; cycle < level.guards.length && (await state()).watchGuardId !== level.guards.at(-1).id; cycle++) {
         const previous = (await state()).watchGuardId;
         await page.keyboard.press('Tab');
@@ -56,7 +56,7 @@ const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs')
       const scanned = await state(); assert.equal(scanned.status, 'playing'); assert.equal(scanned.player.x, body.x); assert.equal(scanned.player.z, body.z);
       await page.screenshot({ path: path.join(artifacts, `campaign-${level.id}-watch.png`) });
       evidence.wings.push({ level: level.id, scanSeconds: scanned.time - scanStart, scans: scanned.stats.scans, objectives: [] });
-      await keys(['Shift']); await page.waitForTimeout(50);
+      await page.keyboard.press('q'); await page.waitForTimeout(50);
       for (const relic of level.relics) {
         await follow(relic);
         const current = await state(); assert.equal(current.relics.find(value => value.id === relic.id).collected, true);

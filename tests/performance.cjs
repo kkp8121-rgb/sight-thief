@@ -10,14 +10,14 @@ const { setup, audioEvidence, save, artifacts } = require('./browser-tools.cjs')
       const cdp = await t.context.newCDPSession(t.page); await cdp.send('Emulation.setCPUThrottlingRate', { rate });
       await t.page.goto(t.url); await t.page.waitForFunction(() => window.__sight?.ready);
       await t.page.keyboard.press('Enter'); await t.page.keyboard.press('Enter');
-      await t.page.keyboard.down('Shift'); await t.page.keyboard.down('q');
+      await t.page.keyboard.press('q');
       await t.page.waitForFunction(() => window.__sight.run.relics[0].discovered, null, { timeout: 30000 });
-      await t.page.keyboard.up('q'); await t.page.waitForTimeout(80);
+      await t.page.keyboard.press('q'); await t.page.waitForTimeout(80);
       const before = await t.page.evaluate(() => window.__sight.run.player);
       await t.page.evaluate(() => { window.__audioEvidence.frames = []; });
       await t.page.keyboard.down('a'); await t.page.waitForTimeout(1100); await t.page.keyboard.up('a');
       const after = await t.page.evaluate(() => window.__sight.run.player); assert.ok(after.x > before.x + .5, 'real strafe input works under load');
-      await t.page.keyboard.down('q'); await t.page.waitForTimeout(5000); await t.page.keyboard.up('q');
+      await t.page.keyboard.press('q'); await t.page.waitForTimeout(5000); await t.page.keyboard.press('q');
       const audio = await audioEvidence(t.page), stats = await t.page.evaluate(() => window.__sight.sceneStats);
       const renderer = await t.page.evaluate(() => { const gl = document.querySelector('canvas').getContext('webgl2'); const ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); });
       assert.ok(audio.averageMs < 50, `mean frame interval under ${rate}x CPU throttle: ${audio.averageMs}`);

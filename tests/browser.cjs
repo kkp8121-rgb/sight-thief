@@ -15,13 +15,14 @@ const { setup, audioEvidence, save, root, artifacts } = require('./browser-tools
       await page.screenshot({ path: path.join(artifacts, `${location}-title.png`) });
       await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
       await page.waitForFunction(() => window.__sight.screen === 'play');
-      await page.keyboard.down('Shift'); await page.waitForTimeout(100);
+      await page.waitForTimeout(100);
       const before = await page.evaluate(() => window.__sight);
       assert.equal(before.run.player.inShadow, true);
+      assert.equal(before.run.player.crouching, true, 'quiet movement is the default');
       assert.equal(before.run.relics.some(relic => relic.discovered), false);
       if (before.sceneStats.visibleRelicIds) assert.deepEqual(before.sceneStats.visibleRelicIds, []);
       await page.screenshot({ path: path.join(artifacts, `${location}-spawn.png`) });
-      await page.keyboard.down('q');
+      await page.keyboard.press('q');
       await page.waitForFunction(() => window.__sight.run.relics[0].discovered, null, { timeout: 25000 });
       const observed = await page.evaluate(() => window.__sight);
       assert.equal(observed.run.player.x, before.run.player.x); assert.equal(observed.run.player.z, before.run.player.z);
@@ -38,8 +39,10 @@ const { setup, audioEvidence, save, root, artifacts } = require('./browser-tools
         assert.ok(!observed.sceneStats.visibleGuardIds.includes(guard.id));
       }
       await page.screenshot({ path: path.join(artifacts, `${location}-watch.png`) });
-      await page.keyboard.up('q'); await page.waitForTimeout(100);
+      await page.keyboard.press('q'); await page.waitForTimeout(100);
       assert.equal((await page.evaluate(() => window.__sight.run)).watching, false);
+      assert.match(await page.locator('#objective-text').textContent(), /통로/, 'the first remembered relic is guided through the wall opening');
+      await page.screenshot({ path: path.join(artifacts, `${location}-route.png`) });
       const turnStart = await page.evaluate(() => window.__sight.run.player.yaw);
       await page.keyboard.down('ArrowRight'); await page.waitForTimeout(220); await page.keyboard.up('ArrowRight');
       const turned = await page.evaluate(() => window.__sight);

@@ -16,6 +16,8 @@ async function setup(options = {}, launchOptions = {}) {
   page.on('requestfailed', request => failed.push([request.failure()?.errorText, request.url()]));
   page.on('request', request => requests.push(request.url()));
   await page.addInitScript(() => {
+    // Never capture the desktop cursor from Windows headless automation.
+    Element.prototype.requestPointerLock = () => Promise.reject(new Error('Pointer lock disabled in automated tests'));
     const Native = window.AudioContext || window.webkitAudioContext;
     window.__audioEvidence = { contexts: [], sources: 0, peak: 0, energy: 0, samples: 0, frames: [] };
     let previous;

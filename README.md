@@ -15,16 +15,17 @@ Open `index.html` directly. All runtime dependencies, art and sound are bundled 
 | WASD | Move and strafe |
 | Mouse, after clicking the game view | Look |
 | ↑ / ↓, ← / → | Move forward/back, turn left/right |
-| Hold Shift | Crouch; blue refuge rings conceal a crouching body |
-| Hold Q | Borrow the nearest guard's eyes; your body stays put |
-| Tab while holding Q | Select the next guard |
+| No key / normal movement | Quiet crouched walking; blue refuge rings conceal a crouching body |
+| Hold Shift | Hurry; faster movement makes more noise and raises exposure risk |
+| Q (toggle) | Borrow the nearest guard's eyes; your body stays put until Q toggles back |
+| Tab while watching | Select the next guard when the wing has multiple guards |
 | E | Recover a discovered relic or use the exit |
 | Esc | Pause and release the mouse |
 | Enter | Start, next wing, retry |
 | R on defeat | Retry the current wing |
 | M | Mute |
 
-Touch devices have movement, turning, crouch toggle, held observation, interaction and guard-switch controls. Crouching reduces footstep range; it does not make you invisible outside refuges. Guards can still detect you at very close range inside a refuge. Observation freezes your body, not the museum.
+Touch devices have movement, turning, hurry toggle, observation toggle, interaction and guard-switch controls. Crouching reduces footstep range; it does not make you invisible outside refuges. Guards can still detect you at very close range inside a refuge. Observation freezes your body, not the museum.
 
 Only completed-wing records and sound/difficulty preferences are saved in this browser. An attempt in progress is not saved. Standard and gentle records are separate; either mode unlocks the next wing.
 
@@ -50,4 +51,4 @@ Original image-generation prompts and preserved sources are documented in [docs/
 
 Public repository: https://github.com/kkp8121-rgb/sight-thief
 
-GitHub Pages requires an explicitly approved push and deployment; an expected URL is not evidence of a live release.
+Play on GitHub Pages: https://kkp8121-rgb.github.io/sight-thief/

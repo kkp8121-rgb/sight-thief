@@ -9,6 +9,39 @@ class Heap {
   pop() { const a = this.values, first = a[0], last = a.pop(); if (a.length) { let i = 0; while (i * 2 + 1 < a.length) { let c = i * 2 + 1; if (c + 1 < a.length && a[c + 1].score < a[c].score) c++; if (last.score <= a[c].score) break; a[i] = a[c]; i = c; } a[i] = last; } return first; }
 }
 
+function movementInput(from, to) {
+  const dx = to.x - from.x, dz = to.z - from.z;
+  if (Math.hypot(dx, dz) <= .16) return { crouch: true };
+  if (Math.abs(dx) > Math.abs(dz)) return { crouch: true, strafe: dx > 0 ? -1 : 1 };
+  return { crouch: true, forward: dz > 0 ? 1 : -1 };
+}
+
+// Replays a candidate on a detached copy with the same crouched axis inputs as
+// campaign.cjs. This measures alert accumulation that the geometric planner
+// cannot see between its quarter-second guard snapshots.
+export function assessRoute(snapshot, route) {
+  const forecast = structuredClone(snapshot);
+  forecast.watching = false;
+  forecast.watchGuardId = null;
+  let maxSuspicion = forecast.suspicion || 0, maxAlert = Math.max(0, ...(forecast.guards || []).map(guard => guard.alert || 0));
+  let detectedAt = null, steps = 0, stuck = false;
+  for (const waypoint of route.slice(1)) {
+    let guard = 0, reached = false;
+    while (guard++ < 2400) {
+      const distance = Math.hypot(waypoint.x - forecast.player.x, waypoint.z - forecast.player.z);
+      if (distance <= .16 && forecast.time >= waypoint.at - .025) { reached = true; break; }
+      stepRun(forecast, movementInput(forecast.player, waypoint), 1 / 60);
+      steps += 1;
+      maxSuspicion = Math.max(maxSuspicion, forecast.suspicion || 0);
+      maxAlert = Math.max(maxAlert, ...(forecast.guards || []).map(candidate => candidate.alert || 0));
+      if (forecast.status !== 'playing') { detectedAt ??= forecast.time; break; }
+    }
+    if (!reached && forecast.status === 'playing') { stuck = true; break; }
+    if (forecast.status !== 'playing') break;
+  }
+  return { safe: forecast.status === 'playing' && !stuck && maxAlert < .2, status: stuck ? 'stuck' : forecast.status, maxSuspicion, maxAlert, detectedAt, steps };
+}
+
 export function planRoute(snapshot, target, horizon = 150, margin = 1) {
   const level = getLevel(snapshot.levelId), start = worldToCell(level, snapshot.player.x, snapshot.player.z), end = worldToCell(level, target.x, target.z);
   const forecast = structuredClone(snapshot), frames = [structuredClone(forecast.guards)];

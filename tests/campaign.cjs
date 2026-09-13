@@ -5,7 +5,7 @@ const { createHash } = require('node:crypto');
 const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs');
 
 (async () => {
-  const { planRoute } = await import('./route-planner.mjs'), { LEVELS } = await import('../src/levels.js');
+  const { planRoute, assessRoute } = await import('./route-planner.mjs'), { LEVELS } = await import('../src/levels.js');
   const hardware = process.argv.includes('--hardware');
   const t = await setup({}, hardware ? { args: ['--use-angle=d3d11', '--enable-webgl', '--ignore-gpu-blocklist'] } : {}), page = t.page, evidence = { started: new Date().toISOString(), hardware, wings: [] };
   evidence.bundleSha256 = createHash('sha256').update(fs.readFileSync(path.join(__dirname, '..', 'game.js'))).digest('hex');
@@ -18,16 +18,38 @@ const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs')
   async function follow(target) {
     await keys([]); await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => window.__sight.screen), 'pause');
-    const frozen = await state(), plan = planRoute(frozen, target);
-    console.log(JSON.stringify({ level: frozen.levelId, target, routeSeconds: plan.duration, explored: plan.explored }));
+    const choosePlan = async () => {
+      const frozen = await state();
+      const candidates = [];
+      for (const margin of [1, 1.75, 2.5, 3.25]) {
+        const candidate = planRoute(frozen, target, 150, margin), risk = assessRoute(frozen, candidate.route);
+        candidates.push({ frozen, candidate, risk, margin });
+        if (risk.safe) break;
+      }
+      candidates.sort((a, b) => (a.risk.safe ? 0 : 1) - (b.risk.safe ? 0 : 1) || a.risk.maxAlert - b.risk.maxAlert || a.candidate.duration - b.candidate.duration);
+      const selected = candidates[0];
+      console.log(JSON.stringify({ level: frozen.levelId, target, routeSeconds: selected.candidate.duration, explored: selected.candidate.explored, margin: selected.margin, detachedMaxAlert: selected.risk.maxAlert, detachedStatus: selected.risk.status }));
+      return selected.candidate;
+    };
+    let plan = await choosePlan(), replans = 0, waypointIndex = 1, lastRiskCheck = 0;
     await page.keyboard.press('Escape');
-    for (const waypoint of plan.route.slice(1)) {
-      const deadline = Date.now() + 12000;
+    while (waypointIndex < plan.route.length) {
+      const waypoint = plan.route[waypointIndex], deadline = Date.now() + 12000;
       while (true) {
         const run = await state();
         assert.equal(run.status, 'playing', `Detected during ${run.levelId} navigation at ${run.player.x},${run.player.z}`);
+        const suspicious = run.time >= lastRiskCheck + .2 && (run.suspicion > .08 || run.guards.some(guard => guard._wasSeeing));
+        if (suspicious) {
+          lastRiskCheck = run.time;
+          if (++replans > 8) throw new Error(`Too many safety replans near ${JSON.stringify({ target, player: run.player, suspicion: run.suspicion })}`);
+          await keys([]); await page.keyboard.press('Escape');
+          assert.equal(await page.evaluate(() => window.__sight.screen), 'pause');
+          plan = await choosePlan(); waypointIndex = 1;
+          await page.keyboard.press('Escape');
+          break;
+        }
         const dx = waypoint.x - run.player.x, dz = waypoint.z - run.player.z, moving = Math.hypot(dx, dz) > .16;
-        if (!moving && run.time >= waypoint.at - .025) break;
+        if (!moving && run.time >= waypoint.at - .025) { waypointIndex += 1; await keys([]); break; }
         if (Date.now() > deadline) throw new Error(`Waypoint stuck: ${JSON.stringify({ waypoint, player: run.player, time: run.time })}`);
         // All campaign runs retain their south-facing initial yaw. A/D strafe,
         // and W/S move on the other world axis using genuine browser keys.
@@ -35,9 +57,9 @@ const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs')
         if (moving) { if (Math.abs(dx) > Math.abs(dz)) wanted.push(dx > 0 ? 'a' : 'd'); else wanted.push(dz > 0 ? 'w' : 's'); }
         await keys(wanted); await page.waitForTimeout(22);
       }
-      await keys([]);
     }
     await keys([]); await page.keyboard.press('e'); await page.waitForTimeout(60);
+    return { replans };
   }
   try {
     await page.goto(t.url); await page.waitForFunction(() => window.__sight?.ready);
@@ -58,11 +80,13 @@ const { setup, save, audioEvidence, artifacts } = require('./browser-tools.cjs')
       evidence.wings.push({ level: level.id, scanSeconds: scanned.time - scanStart, scans: scanned.stats.scans, objectives: [] });
       await page.keyboard.press('q'); await page.waitForTimeout(50);
       for (const relic of level.relics) {
-        await follow(relic);
+        const routeCheck = await follow(relic);
         const current = await state(); assert.equal(current.relics.find(value => value.id === relic.id).collected, true);
         evidence.wings.at(-1).objectives.push({ id: relic.id, at: current.time, peakSuspicion: current.peakSuspicion });
+        evidence.wings.at(-1).routeChecks ||= []; evidence.wings.at(-1).routeChecks.push({ target: relic.id, ...routeCheck });
       }
-      await follow(level.exit); await keys([]);
+      const routeCheck = await follow(level.exit); await keys([]);
+      evidence.wings.at(-1).routeChecks ||= []; evidence.wings.at(-1).routeChecks.push({ target: 'exit', ...routeCheck });
       await page.waitForFunction(() => ['clear', 'ending'].includes(window.__sight.screen));
       const finished = await state(); assert.equal(finished.status, 'won');
       Object.assign(evidence.wings.at(-1), { time: finished.time, collected: finished.stats.collected, peakSuspicion: finished.peakSuspicion, steps: finished.stats.steps });

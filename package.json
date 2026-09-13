@@ -10,6 +10,7 @@
     "test:browser": "node tests/browser.cjs",
     "test:campaign": "node tests/campaign.cjs",
     "test:interaction": "node tests/interaction.cjs",
+    "test:performance": "node tests/performance.cjs",
     "pack": "node tools/pack.cjs",
     "test:package": "node tests/package.cjs"
   },

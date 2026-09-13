@@ -1,4 +1,4 @@
-import { LEVELS, getLevel, worldToCell } from './levels.js';
+import { LEVELS, getLevel, lineOfSight as hasSight } from './levels.js';
 import { createRun, stepRun, interact, cycleView, summarize } from './game.js';
 import { createScene } from './scene.js';
 import { createAudio } from './audio.js';
@@ -7,13 +7,7 @@ const RECORDS_KEY = 'sight-thief-records-v1', SETTINGS_KEY = 'sight-thief-settin
 const clone = (value, fallback = null) => { try { return JSON.parse(JSON.stringify(value)); } catch (_) { return fallback; } };
 const wrapAngle = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
 function lineOfSight(level, from, to) {
-  if (!level || !from || !to) return false;
-  const distance = Math.hypot(to.x - from.x, to.z - from.z), steps = Math.max(1, Math.ceil(distance / Math.max(.1, level.cell * .25)));
-  for (let index = 1; index < steps; index += 1) {
-    const cell = worldToCell(level, from.x + (to.x - from.x) * index / steps, from.z + (to.z - from.z) * index / steps);
-    if (!cell || level.grid[cell.row]?.[cell.col] === '#') return false;
-  }
-  return true;
+  return Boolean(level && from && to && hasSight(level, from.x, from.z, to.x, to.z));
 }
 function bearingLabel(player, target) {
   const distance = Math.hypot(target.x - player.x, target.z - player.z), angle = wrapAngle(Math.atan2(target.x - player.x, -(target.z - player.z)) - (player.yaw || 0));
@@ -23,6 +17,7 @@ function bearingLabel(player, target) {
 
 function boot() {
   const app = document.getElementById('app'), world = document.getElementById('world'), canvas = document.getElementById('world-canvas');
+  const usesTouch = matchMedia('(pointer:coarse)').matches;
   let scene = null, sceneError = false, run = null, screen = 'title', selectedLevel = LEVELS?.[0]?.id || null, previousScreen = 'title', settings = loadSettings(), records = loadRecords();
   let accumulator = 0, lastFrame = performance.now(), mouseYaw = 0, mousePitch = 0, interactRequested = false, cycleRequested = false, dragPointer = null, lastMessage = '', lastMessageUntil = 0;
   const held = { forward: new Set(), back: new Set(), left: new Set(), right: new Set(), turnLeft: new Set(), turnRight: new Set(), crouch: new Set(), watch: new Set() };
@@ -65,9 +60,10 @@ function boot() {
     const known = relics.filter((relic) => relic.discovered && !relic.collected).map((relic) => ({ target: relic, distance: Math.hypot(relic.x - player.x, relic.z - player.z) })).sort((a, b) => a.distance - b.distance);
     const nearest = known[0], exit = level?.exit ? { target: level.exit, distance: Math.hypot(level.exit.x - player.x, level.exit.z - player.z) } : null;
     const objective = nearest ? '\uBAA9\uD45C: ' + nearest.target.name + ' \uD68C\uC218 - ' + bearingLabel(player, nearest.target) : collected === relics.length && exit ? '\uCD9C\uAD6C - ' + bearingLabel(player, exit.target) : '\uAC10\uC2DC\uC790\uC758 \uC2DC\uC120\uC73C\uB85C \uC720\uBB3C\uC744 \uBC1C\uACAC\uD558\uC138\uC694.';
-    document.getElementById('objective-text').textContent = objective;
+    document.getElementById('objective-text').textContent = watching && (nearest || collected === relics.length) ? '내 몸 기준 · ' + objective : objective;
     const tutorial = document.getElementById('tutorial-copy');
-    if (tutorial) tutorial.textContent = run.time < 30 && found === 0 ? '\uC6C5\uD06C\uB9AC\uACE0 Shift\uB97C \uB204\uB978 \uCC44 Q\uB97C \uD640\uB4DC\uD558\uC138\uC694. \uBAB8\uC740 \uBA48\uCD94\uC9C0\uB9CC \uAC10\uC2DC\uC790\uC758 \uC2DC\uC120\uC73C\uB85C \uC720\uBB3C\uC774 \uB4DC\uB7EC\uB0A9\uB2C8\uB2E4.' : watching ? '\uAD00\uCC30 \uC911\uC785\uB2C8\uB2E4. Tab\uC73C\uB85C \uB2E4\uB978 \uAC10\uC2DC\uC790\uB97C \uC0B4\uD3B4\uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.' : collected < relics.length ? '\uBC1C\uACAC\uD55C \uC720\uBB3C\uC758 \uD76C\uBBF8\uD55C \uC724\uACFD\uC744 \uB530\uB77C E\uB85C \uD68C\uC218\uD558\uC138\uC694.' : '\uBAA8\uB4E0 \uC720\uBB3C\uC744 \uD68C\uC218\uD588\uC2B5\uB2C8\uB2E4. \uCD9C\uAD6C\uC5D0\uC11C E\uB97C \uB204\uB974\uC138\uC694.';
+    const firstTip = usesTouch ? '웅크림을 켜고 Q 보기를 길게 누르세요. 몸은 멈추지만 감시자의 눈으로 유물이 드러납니다.' : 'Shift로 웅크린 채 Q를 누르고 계세요. 몸은 멈추지만 감시자의 눈으로 유물이 드러납니다.';
+    if (tutorial) tutorial.textContent = run.time < 30 && found === 0 ? firstTip : watching ? '관찰 중입니다. Tab으로 다른 감시자를 살펴볼 수 있습니다.' : collected < relics.length ? '발견한 유물의 희미한 윤곽을 따라 E로 회수하세요.' : '모든 유물을 회수했습니다. 출구에서 E를 누르세요.';
     const prompt = document.getElementById('interact-prompt'), messageActive = lastMessage && performance.now() < lastMessageUntil;
     const nearbyRelic = nearest && nearest.distance <= 2.1 && lineOfSight(level, player, nearest.target), nearbyExit = exit && collected === relics.length && exit.distance <= 2.1 && lineOfSight(level, player, exit.target);
     prompt.textContent = messageActive ? lastMessage : watching ? '\uAD00\uCC30\uC790\uB97C \uBC14\uAFB8\uB824\uBA74 Tab, Q\uB97C \uB193\uC73C\uBA74 \uBAB8\uC73C\uB85C \uB3CC\uC544\uC635\uB2C8\uB2E4.' : nearbyRelic ? 'E - ' + nearest.target.name + ' \uD68C\uC218' : nearbyExit ? 'E - \uCD9C\uAD6C\uB85C \uB098\uAC00\uAE30' : '';

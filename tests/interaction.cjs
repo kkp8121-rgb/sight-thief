@@ -256,6 +256,7 @@ async function testUnavailableFallbacks() {
     await webgl.page.locator('[data-action="start"]').click();
     await webgl.page.locator('#select-screen [data-action="begin"]').click();
     assert.equal(await webgl.page.evaluate(() => window.__sight.screen), 'select', 'WebGL failure must block entering gameplay');
+    assert.equal(await webgl.page.locator('#scene-fallback').evaluate(node => { const rect = node.getBoundingClientRect(); return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === node; }), true, 'the failure explanation is above the menu, not hidden behind it');
   } finally { await webgl.close(); }
 
   const audio = await openGame({}, () => {

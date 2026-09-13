@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#171923">
   <title>SIGHT THIEF · 시선을 훔치는 자</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main id="app" class="app-shell" data-screen="title">
-    <section id="world" class="world-layer"><canvas id="world-canvas" aria-label="박물관 잠입 장면"></canvas><div id="scene-fallback" class="scene-fallback hidden" role="status"></div></section>
+    <section id="world" class="world-layer"><canvas id="world-canvas" aria-label="박물관 잠입 장면"></canvas></section><div id="scene-fallback" class="scene-fallback hidden" role="status"></div>
 
     <section id="title-screen" data-screen="title" class="screen title-screen">
       <div class="title-art" aria-hidden="true"></div><div class="title-copy"><p class="eyebrow">MUSEUM HEIST / OBSERVATION PROTOCOL</p><h1>SIGHT<br><em>THIEF</em></h1><p class="tagline">시선이 닿은 곳에서만, 잃어버린 기억이 모습을 드러냅니다.</p><div class="action-row"><button class="button primary" data-action="start">잠입 시작</button><button class="button ghost" data-action="begin" id="continue-button">기록 이어하기</button><button class="button quiet" data-action="guide">작전 안내</button></div><p id="title-note" class="muted-copy">웅크리고 Q를 누르면 감시자의 눈을 빌립니다.</p></div>

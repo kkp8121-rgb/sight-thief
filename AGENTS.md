@@ -11,3 +11,7 @@ Game inspection API returns copies only. Real play verification uses inputs, nev
 Verify first-person yaw, strafe and guard-facing signs through the actual camera, not formulas alone. Scene geometry must match physical walls.
 Use apply_patch for Korean and nested quotes. Count exact PowerShell replacements with regex Matches/Escape, not String.Split.
 Read GitHub account identity from gh api user; never guess numeric account ids.
+
+## Learnings
+
+Verify overlaid error messages with hit-testing or screenshots. CSS visibility alone can pass while another panel covers the explanation.
